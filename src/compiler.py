@@ -247,7 +247,8 @@ def compile_file(file_path):
     for node in ast:
         if node.type == 'CLASS' and node.value == 'Test':
             print("Running the script...")
-            subprocess.run(["python", file_path])
+            process = subprocess.run(["python", file_path], capture_output=True)
+            print(process.stdout.decode())
             print(f"Script {file_path} executed.")
             break
 
