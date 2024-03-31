@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import subprocess
 
 # Token types
 TOKEN_TYPES = [
@@ -213,8 +214,10 @@ def parse(tokens):
 
     return ast
 
+import subprocess
+
 def compile_file(file_path):
-    # Compile the contents of the .ms file
+    # Compile the contents of the .us file
     with open(file_path, 'r') as file:
         input_text = file.read()
 
@@ -242,11 +245,18 @@ def compile_file(file_path):
         print("Contents of the file:")
         print(input_text)
 
+    # Run the script if it's a Test class
+    for node in ast:
+        if node.type == 'CLASS' and node.value == 'Test':
+            print("Running the script...")
+            subprocess.run(["python", file_path])
+            break
+
 def compile_files_in_directory(directory):
-    # Traverse the directory structure and compile .ms files
+    # Traverse the directory structure and compile .us files
     for root, _, files in os.walk(directory):
         for file in files:
-            if file.endswith('.ms'):
+            if file.endswith('.us'):
                 file_path = os.path.join(root, file)
                 compile_file(file_path)
 

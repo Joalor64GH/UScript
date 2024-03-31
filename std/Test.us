@@ -1,6 +1,6 @@
 folder;
 
-import mist.Bool;
+import uscript.Bool;
 
 class Test {
     variable boolean->Bool = true;

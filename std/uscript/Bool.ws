@@ -1,4 +1,4 @@
-folder mist;
+folder uscript;
 
 class Bool {
     variable value;
