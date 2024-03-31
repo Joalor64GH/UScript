@@ -214,8 +214,6 @@ def parse(tokens):
 
     return ast
 
-import subprocess
-
 def compile_file(file_path):
     # Compile the contents of the .us file
     with open(file_path, 'r') as file:
@@ -250,6 +248,7 @@ def compile_file(file_path):
         if node.type == 'CLASS' and node.value == 'Test':
             print("Running the script...")
             subprocess.run(["python", file_path])
+            print(f"Script {file_path} executed.")
             break
 
 def compile_files_in_directory(directory):
@@ -259,42 +258,6 @@ def compile_files_in_directory(directory):
             if file.endswith('.us'):
                 file_path = os.path.join(root, file)
                 compile_file(file_path)
-
-def execute_ast(ast):
-    # Function to execute the AST (Abstract Syntax Tree)
-    for node in ast:
-        if node.type == 'CLASS':
-            print(f"Declaring class: {node.value}")
-        elif node.type == 'VARIABLE':
-            print(f"Declaring variable: {node.value}")
-        elif node.type == 'FUNCTION':
-            print(f"Declaring function: {node.value}")
-        elif node.type == 'IF':
-            execute_if_statement(node)
-        elif node.type == 'YEET':
-            print(f"Error: {node.value}")
-        elif node.type == 'FUNCTION_CALL':
-            execute_function_call(node)
-
-def execute_function_call(call_node):
-    function_name = call_node.children[0].value
-    arguments = call_node.children[1:]
-
-    if function_name == 'say':
-        if len(arguments) != 1:
-            raise Exception('Error: say function requires exactly one argument')
-        message = arguments[0].value
-        print(f"Saying: {message}")
-    else:
-        print(f"Error: Unknown function '{function_name}'")
-
-def execute_if_statement(if_node):
-    condition = if_node.children[0]
-    body = if_node.children[1]
-    if condition.value == 'true':  # Assuming 'true' condition for demonstration
-        execute_ast(body.children)
-    else:
-        print("Condition not met for if statement")
 
 def main():
     if len(sys.argv) != 2:
