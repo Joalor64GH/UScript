@@ -6,11 +6,12 @@ import sys
 TOKEN_TYPES = [
     ('FOLDER', r'folder\s+(\w+(\.\w+)*)'),
     ('CLASS', r'class\s+(\w+)'),
-    ('VARIABLE', r'variable\s+(\w+)'),
+    ('VARIABLE', r'variable\s+(\w+)(->\w+)?\s*=\s*("[^"]*"|\btrue\b|\bfalse\b|\b[a-zA-Z_]\w*\b)'),
     ('FUNCTION', r'function\s+(\w+)'),
     ('IF', r'if'),
     ('NOT', r'not'),
     ('ELSE', r'but if|otherwise'),
+    ('IMPORT', r'import\s+([\w.]+)'),
     ('IDENTIFIER', r'\b[a-zA-Z_]\w*\b'),
     ('STRING', r'"(?:[^"\\]|\\.)*"'),
     ('COMMENT', r'//.*|/\*[\s\S]*?\*/'),
@@ -19,11 +20,14 @@ TOKEN_TYPES = [
     ('LBRACE', r'{'),
     ('RBRACE', r'}'),
     ('SEMICOLON', r';'),
+    ('DOT', r'\.'),
     ('YEET', r'yeet'),
+    ('ARROW', r'->'),
+    ('BOOLEAN', r'true|false'),
 ]
 
 # Keywords
-KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet'}
+KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import'}
 
 class Node:
     def __init__(self, type, children=None, value=None):
@@ -72,9 +76,17 @@ def parse(tokens):
             return token
         raise Exception(f'Parser error: Expected {token_type}, found {token}')
 
+    def parse_import():
+        consume('IMPORT')
+        module_name = consume('IDENTIFIER')[1]
+        while peek() and peek()[0] == 'DOT':
+            consume('DOT')
+            module_name += '.' + consume('IDENTIFIER')[1]
+        consume('SEMICOLON')
+        return Node('IMPORT', value=module_name)
+
     def parse_folder():
         consume('FOLDER')
-        # You can perform additional processing here if needed
 
     def parse_class():
         consume('CLASS')
@@ -84,7 +96,13 @@ def parse(tokens):
     def parse_variable():
         consume('VARIABLE')
         name = consume('IDENTIFIER')[1]
-        return Node('VARIABLE', value=name)
+        arrow = None
+        if peek()[0] == 'ARROW':
+            consume('ARROW')
+            arrow = consume('IDENTIFIER')[1]
+        consume('EQUALS')
+        value = parse_value()
+        return Node('VARIABLE', value=(name, arrow, value))
 
     def parse_function():
         consume('FUNCTION')
@@ -117,6 +135,8 @@ def parse(tokens):
                 return parse_assignment()
         elif token[0] == 'YEET':
             return parse_yeet()
+        elif token[0] == 'IMPORT':
+            return parse_import()
         else:
             raise Exception(f'Parser error: Unexpected token {token}')
 
@@ -160,6 +180,17 @@ def parse(tokens):
         consume('SEMICOLON')
         return Node('YEET', value=error)
 
+    def parse_value():
+        token = peek()
+        if token[0] == 'STRING':
+            return consume('STRING')[1]
+        elif token[0] == 'BOOLEAN':
+            return token[1] == 'true'
+        elif token[0] == 'IDENTIFIER':
+            return consume('IDENTIFIER')[1]
+        else:
+            raise Exception('Parser error: Unexpected value')
+
     ast = []
     while peek():
         token = peek()
@@ -175,6 +206,8 @@ def parse(tokens):
             ast.append(parse_if())
         elif token[0] == 'COMMENT':
             index += 1
+        elif token[0] == 'IMPORT':
+            ast.append(parse_import())
         else:
             raise Exception(f'Parser error: Unexpected token {token}')
 
@@ -187,7 +220,27 @@ def compile_file(file_path):
 
     tokens = lexer(input_text)
     ast = parse(tokens)
-    print(ast)  # Replace this with your compilation logic
+    
+    # Check if AST contains a function call to "say"
+    say_called = False
+    for node in ast:
+        if node.type == 'FUNCTION_CALL' and node.children[0].value == 'say':
+            say_called = True
+            # Extract message argument
+            if len(node.children) == 2 and node.children[1].type == 'STRING':
+                message = node.children[1].value
+                print(f"Saying: {message}")
+            else:
+                print("Error: Incorrect usage of 'say' function")
+                # Optionally raise an exception here for invalid usage
+            
+        if node.type == 'IMPORT':
+            print(f"Importing: {node.value}")
+
+    # If 'say' function is not called, print the contents of the file
+    if not say_called:
+        print("Contents of the file:")
+        print(input_text)
 
 def compile_files_in_directory(directory):
     # Traverse the directory structure and compile .ws files

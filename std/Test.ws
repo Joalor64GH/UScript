@@ -1,5 +1,13 @@
+folder;
+
+import wobble.Bool;
+
 class Test {
+    variable boolean->Bool = true;
     function onCreate() {
-        say("hi!");
+        if (boolean)
+            say("hi!");
+        otherwise
+            say("bye");
     }
 }
