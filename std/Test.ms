@@ -1,6 +1,6 @@
 folder;
 
-import wobble.Bool;
+import mist.Bool;
 
 class Test {
     variable boolean->Bool = true;

@@ -214,7 +214,7 @@ def parse(tokens):
     return ast
 
 def compile_file(file_path):
-    # Compile the contents of the .ws file
+    # Compile the contents of the .ms file
     with open(file_path, 'r') as file:
         input_text = file.read()
 
@@ -243,10 +243,10 @@ def compile_file(file_path):
         print(input_text)
 
 def compile_files_in_directory(directory):
-    # Traverse the directory structure and compile .ws files
+    # Traverse the directory structure and compile .ms files
     for root, _, files in os.walk(directory):
         for file in files:
-            if file.endswith('.ws'):
+            if file.endswith('.ms'):
                 file_path = os.path.join(root, file)
                 compile_file(file_path)
 

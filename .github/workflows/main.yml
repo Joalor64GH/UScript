@@ -16,4 +16,4 @@ jobs:
         python-version: '3.x'
 
     - name: Run compiler
-      run: python run.py std/Test.ws
+      run: python run.py std/Test.ms

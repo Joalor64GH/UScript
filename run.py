@@ -9,7 +9,7 @@ def compile_file(input_file):
         return
 
     # Run the compiler on the input file
-    output_file = input_file.replace('.ws', '.out')  # Replace .ws extension with .out
+    output_file = input_file.replace('.ms', '.out')  # Replace .ws extension with .out
     command = ['python', 'src/compiler.py', input_file]
     try:
         subprocess.run(command, check=True)
