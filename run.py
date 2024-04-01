@@ -9,7 +9,7 @@ def compile_and_run_file(input_file):
         return
 
     # Run the compiler on the input file
-    output_file = input_file.replace('.us', '.out')  # Replace .us extension with .out
+    output_file = input_file.replace('.us', '.us')  # Replace .us extension with .out
     compiler_command = ['python', 'src/compiler.py', input_file]
     try:
         subprocess.run(compiler_command, check=True)

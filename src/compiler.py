@@ -28,13 +28,14 @@ TOKEN_TYPES = [
 ]
 
 # Keywords
-KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import', 'extends', 'public'}
+KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import', 'extends'}
 
 class Node:
-    def __init__(self, type, children=None, value=None):
+    def __init__(self, type, children=None, value=None, access_modifier=None):
         self.type = type
         self.children = children if children else []
         self.value = value
+        self.access_modifier = access_modifier
 
 def lexer(input_text):
     tokens = []
@@ -108,6 +109,10 @@ def parse(tokens):
 
     def parse_variable():
         consume('VARIABLE')
+        access_modifier = None
+        if peek()[0] == 'ACCESS_MODIFIER':
+            access_modifier = consume('ACCESS_MODIFIER')
+        consume('VARIABLE')
         name = consume('IDENTIFIER')[1]
         arrow = None
         if peek()[0] == 'ARROW':
@@ -115,16 +120,20 @@ def parse(tokens):
             arrow = consume('IDENTIFIER')[1]
         consume('EQUALS')
         value = parse_value()
-        return Node('VARIABLE', value=(name, arrow, value))
+        return Node('VARIABLE', value=(name, arrow, value), access_modifier=access_modifier)
 
     def parse_function():
+        access_modifier = None
+        if peek()[0] == 'ACCESS_MODIFIER':
+            access_modifier = consume('ACCESS_MODIFIER')
+
         is_public = False
         if peek()[0] == 'PUBLIC':
             consume('PUBLIC')
             is_public = True
         consume('FUNCTION')
         name = consume('IDENTIFIER')[1]
-        return Node('FUNCTION', value=name, is_public=is_public)
+        return Node('FUNCTION', value=name, is_public=is_public, access_modifier=access_modifier)
 
     def parse_if():
         consume('IF')
