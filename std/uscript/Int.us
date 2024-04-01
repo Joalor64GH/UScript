@@ -1,0 +1,9 @@
+folder uscript;
+
+class Int {
+    private variable value;
+
+    public function neue(initialValue) {
+        this.value = initialValue;
+    }
+}

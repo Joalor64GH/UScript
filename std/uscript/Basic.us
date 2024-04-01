@@ -3,11 +3,11 @@ folder uscript;
 import uscript.Bool;
 
 class Basic {
-    variable alive->Bool = true;
-    variable exists->Bool = true;
+    public variable alive->Bool = true;
+    public variable exists->Bool = true;
 
-    variable active->Bool = true;
-    variable visible->Bool = true;
+    public variable active->Bool = true;
+    public variable visible->Bool = true;
 
     public function neue() {}
 

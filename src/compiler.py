@@ -9,6 +9,7 @@ TOKEN_TYPES = [
     ('CLASS', r'class\s+(\w+)(\s+extends\s+\w+)?'),
     ('VARIABLE', r'variable\s+(\w+)(->\w+)?\s*=\s*("[^"]*"|\btrue\b|\bfalse\b|\b[a-zA-Z_]\w*\b)'),
     ('FUNCTION', r'(public\s+)?function\s+(\w+)'),
+    ('RETURN', r'return\s+("[^"]*"|\btrue\b|\bfalse\b|\b[a-zA-Z_]\w*\b|\bnull\b)'),
     ('IF', r'if'),
     ('NOT', r'not'),
     ('ELSE', r'but if|otherwise'),
@@ -25,10 +26,11 @@ TOKEN_TYPES = [
     ('YEET', r'yeet'),
     ('ARROW', r'->'),
     ('BOOLEAN', r'true|false'),
+    ('NULL', r'null'),
 ]
 
 # Keywords
-KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import', 'extends'}
+KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import', 'extends', 'return'}
 
 class Node:
     def __init__(self, type, children=None, value=None, access_modifier=None):
@@ -91,21 +93,25 @@ def parse(tokens):
         consume('FOLDER')
 
     def parse_class():
+        access_modifier = None
+        if peek()[0] == 'ACCESS_MODIFIER':
+            access_modifier = consume('ACCESS_MODIFIER')
         consume('CLASS')
         name = consume('IDENTIFIER')[1]
-
+        body = None
+        if peek()[0] == 'LBRACE':
+            body = parse_body()
         generic_type = None
         if peek()[0] == 'LESS_THAN':
             consume('LESS_THAN')
             generic_type = consume('IDENTIFIER')[1]
             consume('GREATER_THAN')
-
         extends = None
         if peek() and peek()[0] == 'EXTENDS':
             consume('EXTENDS')
             extends = consume('IDENTIFIER')[1]
         
-        return Node('CLASS', value=name, generic_type=generic_type, extends=extends)
+        return Node('CLASS', value=name, access_modifier=access_modifier, children=body, generic_type=generic_type, extends=extends)
 
     def parse_variable():
         consume('VARIABLE')
@@ -134,6 +140,15 @@ def parse(tokens):
         consume('FUNCTION')
         name = consume('IDENTIFIER')[1]
         return Node('FUNCTION', value=name, is_public=is_public, access_modifier=access_modifier)
+    
+    def parse_parameters():
+        parameters = []
+        while peek()[0] != 'RPAREN':
+            param = consume('IDENTIFIER')
+            parameters.append(param)
+            if peek()[0] == 'COMMA':
+                consume('COMMA')
+        return Node('PAREMETERS', value=parameters)
 
     def parse_if():
         consume('IF')
@@ -199,6 +214,11 @@ def parse(tokens):
         variable = parse_variable()
         consume('SEMICOLON')
         return Node('ASSIGNMENT', children=[variable])
+    
+    def parse_return():
+        consume('RETURN')
+        value = parse_value()
+        return Node('RETURN', value=value)
 
     def parse_yeet():
         consume('YEET')
@@ -214,6 +234,9 @@ def parse(tokens):
             return token[1] == 'true'
         elif token[0] == 'IDENTIFIER':
             return consume('IDENTIFIER')[1]
+        elif token[0] == 'NULL':
+            consume('NULL')
+            return None
         else:
             raise Exception('Parser error: Unexpected value')
 
@@ -230,6 +253,8 @@ def parse(tokens):
             ast.append(parse_function())
         elif token[0] == 'IF':
             ast.append(parse_if())
+        elif token[0] == 'RETURN':
+            ast.append(parse_return())
         elif token[0] == 'COMMENT':
             index += 1
         elif token[0] == 'IMPORT':
@@ -246,36 +271,55 @@ def compile_file(file_path):
 
     tokens = lexer(input_text)
     ast = parse(tokens)
-    
-    # Check if AST contains a function call to "say"
-    say_called = False
-    for node in ast:
-        if node.type == 'FUNCTION_CALL' and node.children[0].value == 'say':
-            say_called = True
-            # Extract message argument
-            if len(node.children) == 2 and node.children[1].type == 'STRING':
-                message = node.children[1].value
-                print(f"Saying: {message}")
-            else:
-                print("Error: Incorrect usage of 'say' function")
-                # Optionally raise an exception here for invalid usage
-            
-        if node.type == 'IMPORT':
-            print(f"Importing: {node.value}")
 
-    # If 'say' function is not called, print the contents of the file
-    if not say_called:
+    return_found = any(node.type == 'RETURN' for node in ast)
+
+    if not return_found:
         print("Contents of the file:")
         print(input_text)
 
-    # Run the script if it's a Test class
+    execute_ast(ast)
+
+def execute_ast(ast):
     for node in ast:
-        if node.type == 'CLASS' and node.value == 'Test':
-            print("Running the script...")
-            process = subprocess.run(["python", file_path], capture_output=True)
-            print(process.stdout.decode())
-            print(f"Script {file_path} executed.")
-            break
+        if node.type == "CLASS":
+            print(f"Declaring class: {node.value}")
+        elif node.type == "VARIABLE":
+            print(f"Declaring {'public ' if node.is_public else ''}variable: {node.value}")
+        elif node.type == "FUNCTION":
+            print(f"Declaring {'public ' if node.is_public else ''}function: {node.value}")
+        elif node.type == "IF":
+            execute_if_statement(node)
+        elif node.type == "RETURN":
+            execute_return_statement(node)
+        elif node.type == "YEET":
+            print(f"Error: {node.value}")
+        elif node.type == "FUNCTION_CALL":
+            execute_function_call(node)
+
+def execute_if_statement(if_node):
+    condition = if_node.children[0]
+    body = if_node.children[1]
+    if condition.value == 'true':
+        execute_ast(body.children)
+    else:
+        print("Conditino not met for if statement")
+
+def execute_return_statement(return_node):
+    value = return_node.value
+    print(f"Returning: {value}")
+
+def execute_function_call(call_node):
+    function_name = call_node.children[0].value
+    arguments = call_node.children[1:]
+
+    if function_name == 'say':
+        if len(arguments != 1):
+            raise Exception('Error: say function rquires exactly one argument')
+            message = arguments[0].value
+            print(f"Saying: {message}")
+        else:
+            print(f"Error: Unknown function '{function_name}'")
 
 def compile_files_in_directory(directory):
     # Traverse the directory structure and compile .us files

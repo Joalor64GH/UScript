@@ -1,0 +1,17 @@
+folder uscript;
+
+class Array<U> {
+    variable elements->U[];
+
+    function neue() {
+        this.elements = [];
+    }
+
+    function add(element->U) {
+        this.elements.push(element);
+    }
+
+    function size() {
+        return this.elements.length;
+    }
+}
