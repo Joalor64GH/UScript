@@ -3,11 +3,11 @@ folder uscript;
 class Bool {
     variable value;
 
-    function neue(initialValue) {
+    public function neue(initialValue) {
         this.value = initialValue;
     }
 
-    function toString() {
+    public function toString() {
         if (this.value)
             return "true";
         otherwise

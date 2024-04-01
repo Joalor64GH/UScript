@@ -1,0 +1,7 @@
+folder uscript;
+
+import uscript.Basic;
+
+class Group<U:Basic> extends Basic {
+    // unfinished
+}

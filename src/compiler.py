@@ -6,9 +6,9 @@ import subprocess
 # Token types
 TOKEN_TYPES = [
     ('FOLDER', r'folder\s+(\w+(\.\w+)*)'),
-    ('CLASS', r'class\s+(\w+)'),
+    ('CLASS', r'class\s+(\w+)(\s+extends\s+\w+)?'),
     ('VARIABLE', r'variable\s+(\w+)(->\w+)?\s*=\s*("[^"]*"|\btrue\b|\bfalse\b|\b[a-zA-Z_]\w*\b)'),
-    ('FUNCTION', r'function\s+(\w+)'),
+    ('FUNCTION', r'(public\s+)?function\s+(\w+)'),
     ('IF', r'if'),
     ('NOT', r'not'),
     ('ELSE', r'but if|otherwise'),
@@ -28,7 +28,7 @@ TOKEN_TYPES = [
 ]
 
 # Keywords
-KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import'}
+KEYWORDS = {'if', 'not', 'but', 'otherwise', 'yeet', 'import', 'extends', 'public'}
 
 class Node:
     def __init__(self, type, children=None, value=None):
@@ -92,7 +92,19 @@ def parse(tokens):
     def parse_class():
         consume('CLASS')
         name = consume('IDENTIFIER')[1]
-        return Node('CLASS', value=name)
+
+        generic_type = None
+        if peek()[0] == 'LESS_THAN':
+            consume('LESS_THAN')
+            generic_type = consume('IDENTIFIER')[1]
+            consume('GREATER_THAN')
+
+        extends = None
+        if peek() and peek()[0] == 'EXTENDS':
+            consume('EXTENDS')
+            extends = consume('IDENTIFIER')[1]
+        
+        return Node('CLASS', value=name, generic_type=generic_type, extends=extends)
 
     def parse_variable():
         consume('VARIABLE')
@@ -106,9 +118,13 @@ def parse(tokens):
         return Node('VARIABLE', value=(name, arrow, value))
 
     def parse_function():
+        is_public = False
+        if peek()[0] == 'PUBLIC':
+            consume('PUBLIC')
+            is_public = True
         consume('FUNCTION')
         name = consume('IDENTIFIER')[1]
-        return Node('FUNCTION', value=name)
+        return Node('FUNCTION', value=name, is_public=is_public)
 
     def parse_if():
         consume('IF')

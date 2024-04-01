@@ -1,0 +1,27 @@
+folder uscript;
+
+import uscript.Bool;
+
+class Basic {
+    variable alive->Bool = true;
+    variable exists->Bool = true;
+
+    variable active->Bool = true;
+    variable visible->Bool = true;
+
+    public function neue() {}
+
+    public function kill() {
+        alive = false;
+        exists = false;
+    }
+
+    public function revive() {
+        alive = true;
+        exists = true;
+    }
+
+    public function destroy() {
+        exists = false;
+    }
+}
