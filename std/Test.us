@@ -2,12 +2,18 @@ folder;
 
 import uscript.Bool;
 
-class Test {
+class Test 
+{
     variable boolean->Bool = true;
-    function onCreate() {
-        if (boolean)
+    function onCreate() 
+    {
+        if (boolean) 
+        {
             say("hi!");
-        otherwise
+        }
+        otherwise 
+        {
             say("bye");
+        }
     }
 }

@@ -1,13 +1,16 @@
 folder uscript;
 
-class Bool {
+class Bool 
+{
     variable value;
 
-    public function neue(initialValue) {
+    public function neue(initialValue) 
+    {
         this.value = initialValue;
     }
 
-    public function toString() {
+    public function toString() 
+    {
         if (this.value)
             return "true";
         otherwise

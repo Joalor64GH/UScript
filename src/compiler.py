@@ -318,8 +318,6 @@ def execute_function_call(call_node):
             raise Exception('Error: say function rquires exactly one argument')
             message = arguments[0].value
             print(f"Saying: {message}")
-        else:
-            print(f"Error: Unknown function '{function_name}'")
 
 def compile_files_in_directory(directory):
     # Traverse the directory structure and compile .us files

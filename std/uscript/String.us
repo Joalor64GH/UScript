@@ -1,17 +1,21 @@
 folder uscript;
 
-class String {
+class String 
+{
     variable value;
 
-    function neue(initialValue) {
+    function neue(initialValue) 
+    {
         this.value = initialValue;
     }
 
-    function length() {
+    function length() 
+    {
         return this.value.length;
     }
     
-    function toString() {
+    function toString() 
+    {
         return this.value;
     }
 }
