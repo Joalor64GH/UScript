@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-import subprocess
 
 # Token types
 TOKEN_TYPES = [
@@ -66,10 +65,10 @@ def lexer(input_text):
 def parse(tokens):
     index = 0
 
-    def peek():
+    def peek(ahead=0):
         nonlocal index
-        if index < len(tokens):
-            return tokens[index]
+        if index + ahead < len(tokens):
+            return tokens[index + ahead]
         return None
 
     def consume(token_type):
@@ -89,35 +88,17 @@ def parse(tokens):
         consume('SEMICOLON')
         return Node('IMPORT', value=module_name)
 
-    def parse_folder():
-        consume('FOLDER')
-
     def parse_class():
-        access_modifier = None
-        if peek()[0] == 'ACCESS_MODIFIER':
-            access_modifier = consume('ACCESS_MODIFIER')
         consume('CLASS')
         name = consume('IDENTIFIER')[1]
-        body = None
-        if peek()[0] == 'LBRACE':
-            body = parse_body()
-        generic_type = None
-        if peek()[0] == 'LESS_THAN':
-            consume('LESS_THAN')
-            generic_type = consume('IDENTIFIER')[1]
-            consume('GREATER_THAN')
         extends = None
         if peek() and peek()[0] == 'EXTENDS':
             consume('EXTENDS')
             extends = consume('IDENTIFIER')[1]
-        
-        return Node('CLASS', value=name, access_modifier=access_modifier, children=body, generic_type=generic_type, extends=extends)
+        body = parse_body()
+        return Node('CLASS', value=name, children=body, access_modifier=None)
 
     def parse_variable():
-        consume('VARIABLE')
-        access_modifier = None
-        if peek()[0] == 'ACCESS_MODIFIER':
-            access_modifier = consume('ACCESS_MODIFIER')
         consume('VARIABLE')
         name = consume('IDENTIFIER')[1]
         arrow = None
@@ -126,29 +107,30 @@ def parse(tokens):
             arrow = consume('IDENTIFIER')[1]
         consume('EQUALS')
         value = parse_value()
-        return Node('VARIABLE', value=(name, arrow, value), access_modifier=access_modifier)
+        consume('SEMICOLON')
+        return Node('VARIABLE', value=(name, arrow, value))
 
     def parse_function():
-        access_modifier = None
-        if peek()[0] == 'ACCESS_MODIFIER':
-            access_modifier = consume('ACCESS_MODIFIER')
-
         is_public = False
         if peek()[0] == 'PUBLIC':
             consume('PUBLIC')
             is_public = True
         consume('FUNCTION')
         name = consume('IDENTIFIER')[1]
-        return Node('FUNCTION', value=name, is_public=is_public, access_modifier=access_modifier)
+        consume('LPAREN')
+        params = parse_parameters()
+        consume('RPAREN')
+        body = parse_body()
+        return Node('FUNCTION', value=(name, params), children=body, access_modifier='public' if is_public else None)
     
     def parse_parameters():
         parameters = []
-        while peek()[0] != 'RPAREN':
-            param = consume('IDENTIFIER')
+        while peek() and peek()[0] != 'RPAREN':
+            param = consume('IDENTIFIER')[1]
             parameters.append(param)
             if peek()[0] == 'COMMA':
                 consume('COMMA')
-        return Node('PAREMETERS', value=parameters)
+        return parameters
 
     def parse_if():
         consume('IF')
@@ -163,7 +145,7 @@ def parse(tokens):
             statement = parse_statement()
             statements.append(statement)
         consume('RBRACE')
-        return Node('BODY', children=statements)
+        return statements
 
     def parse_statement():
         token = peek()
@@ -178,6 +160,8 @@ def parse(tokens):
             return parse_yeet()
         elif token[0] == 'IMPORT':
             return parse_import()
+        elif token[0] == 'RETURN':
+            return parse_return()
         else:
             raise Exception(f'Parser error: Unexpected token {token}')
 
@@ -187,6 +171,8 @@ def parse(tokens):
             return parse_identifier()
         elif token[0] == 'STRING':
             return parse_string()
+        elif token[0] == 'BOOLEAN':
+            return parse_boolean()
         else:
             raise Exception(f'Parser error: Unexpected token {token}')
 
@@ -198,26 +184,33 @@ def parse(tokens):
         token = consume('STRING')
         return Node('STRING', value=token[1])
 
+    def parse_boolean():
+        token = consume('BOOLEAN')
+        return Node('BOOLEAN', value=token[1])
+
     def parse_function_call():
         identifier = consume('IDENTIFIER')[1]
         consume('LPAREN')
         arguments = []
-        if peek()[0] != 'RPAREN':
+        while peek() and peek()[0] != 'RPAREN':
             arguments.append(parse_expression())
-            while peek()[0] == 'SEMICOLON':
-                consume('SEMICOLON')
-                arguments.append(parse_expression())
+            if peek()[0] == 'COMMA':
+                consume('COMMA')
         consume('RPAREN')
-        return Node('FUNCTION_CALL', children=[Node('IDENTIFIER', value=identifier)] + arguments)
+        consume('SEMICOLON')
+        return Node('FUNCTION_CALL', value=identifier, children=arguments)
 
     def parse_assignment():
-        variable = parse_variable()
+        variable = consume('IDENTIFIER')[1]
+        consume('EQUALS')
+        value = parse_expression()
         consume('SEMICOLON')
-        return Node('ASSIGNMENT', children=[variable])
+        return Node('ASSIGNMENT', value=(variable, value))
     
     def parse_return():
         consume('RETURN')
-        value = parse_value()
+        value = parse_expression()
+        consume('SEMICOLON')
         return Node('RETURN', value=value)
 
     def parse_yeet():
@@ -244,7 +237,7 @@ def parse(tokens):
     while peek():
         token = peek()
         if token[0] == 'FOLDER':
-            parse_folder()
+            consume('FOLDER')
         elif token[0] == 'CLASS':
             ast.append(parse_class())
         elif token[0] == 'VARIABLE':
@@ -264,6 +257,41 @@ def parse(tokens):
 
     return ast
 
+def semantic_analysis(ast):
+    symbol_table = {}
+
+    def analyze_node(node):
+        if node.type == "CLASS":
+            if node.value in symbol_table:
+                raise Exception(f"Semantic error: Class {node.value} already declared")
+            symbol_table[node.value] = node
+        elif node.type == "VARIABLE":
+            var_name = node.value[0]
+            if var_name in symbol_table:
+                raise Exception(f"Semantic error: Variable {var_name} already declared")
+            symbol_table[var_name] = node
+        elif node.type == "FUNCTION":
+            func_name = node.value[0]
+            if func_name in symbol_table:
+                raise Exception(f"Semantic error: Function {func_name} already declared")
+            symbol_table[func_name] = node
+        elif node.type == "IF":
+            analyze_node(node.children[0])  # condition
+            analyze_node(node.children[1])  # body
+        elif node.type == "RETURN":
+            analyze_node(node.value)
+        elif node.type == "FUNCTION_CALL":
+            func_name = node.value
+            if func_name not in symbol_table:
+                raise Exception(f"Semantic error: Function {func_name} not declared")
+            for arg in node.children:
+                analyze_node(arg)
+
+    for node in ast:
+        analyze_node(node)
+
+    return symbol_table
+
 def compile_file(file_path):
     # Compile the contents of the .us file
     with open(file_path, 'r') as file:
@@ -271,12 +299,7 @@ def compile_file(file_path):
 
     tokens = lexer(input_text)
     ast = parse(tokens)
-
-    return_found = any(node.type == 'RETURN' for node in ast)
-
-    if not return_found:
-        print("Contents of the file:")
-        print(input_text)
+    symbol_table = semantic_analysis(ast)
 
     execute_ast(ast)
 
@@ -285,9 +308,9 @@ def execute_ast(ast):
         if node.type == "CLASS":
             print(f"Declaring class: {node.value}")
         elif node.type == "VARIABLE":
-            print(f"Declaring {'public ' if node.is_public else ''}variable: {node.value}")
+            print(f"Declaring variable: {node.value[0]} of type {node.value[1]}")
         elif node.type == "FUNCTION":
-            print(f"Declaring {'public ' if node.is_public else ''}function: {node.value}")
+            print(f"Declaring {'public ' if node.access_modifier == 'public' else ''}function: {node.value[0]}")
         elif node.type == "IF":
             execute_if_statement(node)
         elif node.type == "RETURN":
@@ -301,23 +324,23 @@ def execute_if_statement(if_node):
     condition = if_node.children[0]
     body = if_node.children[1]
     if condition.value == 'true':
-        execute_ast(body.children)
+        execute_ast(body)
     else:
-        print("Conditino not met for if statement")
+        print("Condition not met for if statement")
 
 def execute_return_statement(return_node):
     value = return_node.value
     print(f"Returning: {value}")
 
 def execute_function_call(call_node):
-    function_name = call_node.children[0].value
-    arguments = call_node.children[1:]
+    function_name = call_node.value
+    arguments = call_node.children
 
     if function_name == 'say':
-        if len(arguments != 1):
-            raise Exception('Error: say function rquires exactly one argument')
-            message = arguments[0].value
-            print(f"Saying: {message}")
+        if len(arguments) != 1:
+            raise Exception('Error: say function requires exactly one argument')
+        message = arguments[0].value
+        print(f"Saying: {message}")
 
 def compile_files_in_directory(directory):
     # Traverse the directory structure and compile .us files
